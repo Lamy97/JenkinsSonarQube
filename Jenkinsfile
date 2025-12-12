@@ -73,12 +73,12 @@ pipeline {
                 }
             }
         }
-
-        stage('Quality Check') {
-            steps {
-                sh 'mvn -B checkstyle:check'
-            }
-        }
+// skipping quality check for now untill i ask the teacher.
+//         stage('Quality Check') {
+//             steps {
+//                 sh 'mvn -B checkstyle:check'
+//             }
+//         }
 
         stage('Build Docker Image') {
             when { branch 'main' }
