@@ -113,20 +113,22 @@ pipeline {
         }
 
         stage('Push to Registry') {
-            when { branch 'main' }
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-registry-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh """
-                        set -eux
-                        echo "\\$DOCKER_PASS" | docker login -u "\\$DOCKER_USER" --password-stdin ${DOCKER_REGISTRY}
-                        docker push "${DOCKER_IMAGE}"
-                    """
-                }
+          when { branch 'main' }
+          steps {
+            withCredentials([usernamePassword(
+              credentialsId: 'docker-registry-creds',
+              usernameVariable: 'DOCKER_USER',
+              passwordVariable: 'DOCKER_PASS'
+            )]) {
+              sh(label: 'Docker login & push', script: '''#!/usr/bin/env bash
+        set -euo pipefail
+
+        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin docker.io
+
+        docker push "$DOCKER_IMAGE"
+        ''')
             }
+          }
         }
 
         stage('Deploy') {
