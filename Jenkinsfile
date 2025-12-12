@@ -84,9 +84,10 @@ pipeline {
                 script {
                     // Pick the jar (avoid *sources.jar / *javadoc.jar if they exist)
                     def jarPath = sh(
-                        script: "ls -1 ${APP_MODULE}/target/*.jar | grep -vE '(sources|javadoc)\\.jar$' | head -n 1",
-                        returnStdout: true
+                      script: "ls -1 ${APP_MODULE}/target/*.jar | grep -vE '(sources|javadoc)\\.jar\\$' | head -n 1",
+                      returnStdout: true
                     ).trim()
+
 
                     if (!jarPath) {
                         error("No runnable JAR found in ${APP_MODULE}/target")
