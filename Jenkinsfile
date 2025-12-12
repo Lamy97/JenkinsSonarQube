@@ -24,6 +24,9 @@ pipeline {
                 checkout scm
                 sh 'git rev-parse --abbrev-ref HEAD'
                 sh 'git log --oneline -3'
+
+                // Debug: show the Jenkinsfile lines Jenkins is really running (optional)
+                sh 'nl -ba Jenkinsfile | sed -n "1,140p"'
             }
         }
 
@@ -73,7 +76,6 @@ pipeline {
 
         stage('Quality Check') {
             steps {
-                // If you want, keep it for all modules:
                 sh 'mvn -B checkstyle:check'
             }
         }
@@ -82,18 +84,21 @@ pipeline {
             when { branch 'main' }
             steps {
                 script {
-                    // Pick the jar (avoid *sources.jar / *javadoc.jar if they exist)
-                    def jarPath = sh(
-                      script: "ls -1 ${APP_MODULE}/target/*.jar | grep -vE '(sources|javadoc)\\.jar\\$' | head -n 1",
-                      returnStdout: true
+                    // Pick the jar using Groovy (no grep, no regex $, avoids Groovy "$" parsing issues)
+                    def jarList = sh(
+                        script: "ls -1 ${APP_MODULE}/target/*.jar",
+                        returnStdout: true
                     ).trim()
 
+                    def jarPath = jarList
+                        ? jarList.split('\n')
+                            .find { !(it.endsWith('-sources.jar') || it.endsWith('-javadoc.jar')) }
+                        : null
 
                     if (!jarPath) {
-                        error("No runnable JAR found in ${APP_MODULE}/target")
+                        error("No runnable JAR found in ${APP_MODULE}/target. Found:\n${jarList}")
                     }
 
-                    // Write Dockerfile (simple + reliable)
                     writeFile file: 'Dockerfile', text: """
                     FROM eclipse-temurin:17-jre
                     WORKDIR /app
@@ -115,11 +120,11 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh '''
+                    sh """
                         set -eux
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin docker.io
-                        docker push "$DOCKER_IMAGE"
-                    '''
+                        echo "\\$DOCKER_PASS" | docker login -u "\\$DOCKER_USER" --password-stdin ${DOCKER_REGISTRY}
+                        docker push "${DOCKER_IMAGE}"
+                    """
                 }
             }
         }
