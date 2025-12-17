@@ -17,16 +17,24 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Checkout explicite vers votre repo GitHub en utilisant le paramètre
+                // Remplacement du checkout : utiliser le remote GitHub et synchroniser la branche
                 script {
-                    git branch: "${params.NameBranche}", url: 'https://github.com/Lamy97/JenkinsSonarQube.git'
+                    // Si workspace vide ou pas un repo, init et configurer origin
+                    bat '''
+                        if not exist .git (
+                            git init
+                        )
+                        git remote add origin https://github.com/Lamy97/JenkinsSonarQube.git 2>nul || echo origin deja present
+                        git fetch --all --prune
+                        git checkout -B ${params.NameBranche} origin/${params.NameBranche} 2>nul || git checkout -B ${params.NameBranche}
+                        git reset --hard origin/${params.NameBranche} 2>nul || echo "Reset vers origin/${params.NameBranche} non réalisé"
+                    '''
                 }
+
                 bat 'git rev-parse --abbrev-ref HEAD'
                 bat 'git log --oneline -3'
 
-                // Supprimer le remote 'origin' si présent (commande Windows, silencieuse)
-                bat 'git remote remove origin 2>nul || echo Origin non present'
-
+                // NOTE: on ne supprime plus le remote 'origin' ici pour conserver la synchronisation.
                 // Debug: afficher les premières lignes du Jenkinsfile (PowerShell Windows)
                 bat 'powershell -Command "Get-Content Jenkinsfile | Select-Object -First 140 | ForEach-Object -Begin {$i=1} -Process {\"{0,4}: {1}\" -f $i++, $_ }"'
             }
