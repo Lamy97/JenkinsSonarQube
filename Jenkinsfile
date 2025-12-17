@@ -2,53 +2,71 @@ pipeline {
     agent any
 
     tools {
-        maven 'M3'
-        jdk 'jdk-17'
+        jdk 'JDK17'
+        maven 'Maven3'
     }
-
-    environment {
-        APPLICATION_NAME = 'spring-boot-microservices-tp'
+  environment {
+        APPLICATION_NAME = 'JenkinsSonarQube'
         VERSION = '0.0.1'
-
-        DOCKER_REGISTRY = 'docker.io'
-        DOCKER_REPO = 'testblackbird/spring-boot-microservices-tp' // change if needed
-        DOCKER_IMAGE = "${DOCKER_REGISTRY}/${DOCKER_REPO}:${VERSION}"
-
         // Module you want to containerize
         APP_MODULE = 'runner-ms'
     }
-
+    parameters {
+        string(name: 'NameBranche', defaultValue: 'main', description: 'Nom de la branche à checkout')
+    }
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
-                sh 'git rev-parse --abbrev-ref HEAD'
-                sh 'git log --oneline -3'
+                 // Remplacer checkout scm par un checkout explicite utilisant le paramètre NameBranche.
+                 // Si votre job Jenkins a déjà le repo configuré, remplacez l'appel git ci-dessous
+                 // par la configuration adaptée ou indiquez l'URL de votre repo.
+                 script {
+                     // Checkout explicite vers votre repo GitHub en utilisant le paramètre
+                     git branch: "${params.NameBranche}", url: 'https://github.com/Lamy97/JenkinsSonarQube.git'
+                 }
+                                bat 'git rev-parse --abbrev-ref HEAD'
+                                bat 'git log --oneline -3'
 
-                // Debug: show the Jenkinsfile lines Jenkins is really running (optional)
-                sh 'nl -ba Jenkinsfile | sed -n "1,140p"'
+                                // Supprimer le remote 'origin' si présent (commande Windows, silencieuse)
+                                bat 'git remote remove origin 2>nul || echo Origin non present'
+
+                                // Debug: afficher les premières lignes du Jenkinsfile (Windows PowerShell)
+                                bat 'powershell -Command "Get-Content Jenkinsfile | Select-Object -First 140 | ForEach-Object -Begin {$i=1} -Process {\"{0,4}: {1}\" -f $i++, $_ }"'
             }
         }
 
-        stage('Setup') {
+            stage('Setup') {
+                    steps {
+                        bat '''
+                            echo Java version:
+                            java -version
+                            echo Maven version:
+                            mvn --version
+                            echo Working directory:
+                            cd
+                            dir
+                        '''
+                    }
+                }
+
+        stage('Build') {
             steps {
-                sh '''
-                    set -eux
-                    echo "Java version:"
-                    java -version
-                    echo "Maven version:"
-                    mvn --version
-                    echo "Working directory:"
-                    pwd
-                    ls -la
-                '''
+                bat 'mvn clean compile'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    bat 'mvn sonar:sonar'
+                }
             }
         }
 
         stage('Build & Test') {
             steps {
                 // Run tests for all modules
-                sh 'mvn -B -U clean test'
+                bat 'mvn -B -U clean test'
             }
             post {
                 always {
@@ -60,11 +78,11 @@ pipeline {
         stage('Package') {
             steps {
                 // Package ONLY runner-ms (and build required modules) without rerunning tests
-                sh "mvn -B -U -pl ${APP_MODULE} -am package -DskipTests"
+                bat "mvn -B -U -pl ${APP_MODULE} -am package -DskipTests"
 
-                // Sanity check: show produced jar(s)
-                sh "ls -lah ${APP_MODULE}/target || true"
-                sh "ls -lah ${APP_MODULE}/target/*.jar"
+                // Sanity check: show produced jar(s) (Windows)
+                bat "if exist ${APP_MODULE}\\\\target (dir ${APP_MODULE}\\\\target) else echo No target folder"
+                bat "if exist ${APP_MODULE}\\\\target\\\\*.jar (dir ${APP_MODULE}\\\\target\\\\*.jar) else echo No jar produced"
             }
             post {
                 success {
@@ -73,82 +91,14 @@ pipeline {
                 }
             }
         }
-// skipping quality check for now untill i ask the teacher.
-//         stage('Quality Check') {
-//             steps {
-//                 sh 'mvn -B checkstyle:check'
-//             }
-//         }
 
-        stage('Build Docker Image') {
-            when { branch 'main' }
+
+        stage('Quality Gate') {
             steps {
-                script {
-                    // Pick the jar using Groovy (no grep, no regex $, avoids Groovy "$" parsing issues)
-                    def jarList = sh(
-                        script: "ls -1 ${APP_MODULE}/target/*.jar",
-                        returnStdout: true
-                    ).trim()
-
-                    def jarPath = jarList
-                        ? jarList.split('\n')
-                            .find { !(it.endsWith('-sources.jar') || it.endsWith('-javadoc.jar')) }
-                        : null
-
-                    if (!jarPath) {
-                        error("No runnable JAR found in ${APP_MODULE}/target. Found:\n${jarList}")
-                    }
-
-                    writeFile file: 'Dockerfile', text: """
-                    FROM eclipse-temurin:17-jre
-                    WORKDIR /app
-                    COPY ${jarPath} app.jar
-                    EXPOSE 8080
-                    ENTRYPOINT ["java","-jar","app.jar"]
-                    """.stripIndent()
-
-                    sh "docker build -t ${DOCKER_IMAGE} ."
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
-        }
-
-        stage('Push to Registry') {
-          when { branch 'main' }
-          steps {
-            withCredentials([usernamePassword(
-              credentialsId: 'docker-registry-creds',
-              usernameVariable: 'DOCKER_USER',
-              passwordVariable: 'DOCKER_PASS'
-            )]) {
-              sh(label: 'Docker login & push', script: '''#!/usr/bin/env bash
-        set -euo pipefail
-
-        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin docker.io
-
-        docker push "$DOCKER_IMAGE"
-        ''')
-            }
-          }
-        }
-
-        stage('Deploy') {
-            when { branch 'main' }
-            steps {
-                echo 'Deploying application...'
-                // sh 'kubectl apply -f k8s-deployment.yaml'
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline completed successfully!'
-        }
-        failure {
-            echo 'Pipeline failed!'
-        }
-        cleanup {
-            cleanWs()
         }
     }
 }
