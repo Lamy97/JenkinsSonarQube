@@ -17,37 +17,35 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                 // Remplacer checkout scm par un checkout explicite utilisant le paramètre NameBranche.
-                 // Si votre job Jenkins a déjà le repo configuré, remplacez l'appel git ci-dessous
-                 // par la configuration adaptée ou indiquez l'URL de votre repo.
-                 script {
-                     // Checkout explicite vers votre repo GitHub en utilisant le paramètre
-                     git branch: "${params.NameBranche}", url: 'https://github.com/Lamy97/JenkinsSonarQube.git'
-                 }
-                                bat 'git rev-parse --abbrev-ref HEAD'
-                                bat 'git log --oneline -3'
+                // Checkout explicite vers votre repo GitHub en utilisant le paramètre
+                script {
+                    git branch: "${params.NameBranche}", url: 'https://github.com/Lamy97/JenkinsSonarQube.git'
+                }
+                bat 'git rev-parse --abbrev-ref HEAD'
+                bat 'git log --oneline -3'
 
-                                // Supprimer le remote 'origin' si présent (commande Windows, silencieuse)
-                                bat 'git remote remove origin 2>nul || echo Origin non present'
+                // Supprimer le remote 'origin' si présent (commande Windows, silencieuse)
+                bat 'git remote remove origin 2>nul || echo Origin non present'
 
-                                // Debug: afficher les premières lignes du Jenkinsfile (Windows PowerShell)
-                                bat 'powershell -Command "Get-Content Jenkinsfile | Select-Object -First 140 | ForEach-Object -Begin {$i=1} -Process {\"{0,4}: {1}\" -f $i++, $_ }"'
+                // Debug: afficher les premières lignes du Jenkinsfile (PowerShell Windows)
+                bat 'powershell -Command "Get-Content Jenkinsfile | Select-Object -First 140 | ForEach-Object -Begin {$i=1} -Process {\"{0,4}: {1}\" -f $i++, $_ }"'
             }
         }
 
-            stage('Setup') {
-                    steps {
-                        bat '''
-                            echo Java version:
-                            java -version
-                            echo Maven version:
-                            mvn --version
-                            echo Working directory:
-                            cd
-                            dir
-                        '''
-                    }
-                }
+        stage('Setup') {
+            steps {
+                // Utiliser WORKSPACE et changer de lecteur si nécessaire
+                bat '''
+                    echo Java version:
+                    java -version
+                    echo Maven version:
+                    mvn --version
+                    echo Working directory:
+                    cd /d "%WORKSPACE%"
+                    dir
+                '''
+            }
+        }
 
         stage('Build') {
             steps {
