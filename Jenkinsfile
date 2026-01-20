@@ -15,7 +15,7 @@ pipeline {
     }
 
     environment {
-        SONAR_TOKEN = credentials('sonar-token')
+        SONAR_TOKEN = credentials('jenkinsSonar')
     }
 
     stages {
@@ -49,7 +49,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    bat "mvn -B sonar:sonar -Dsonar.login=%SONAR_TOKEN%"
+                    bat 'mvn -B sonar:sonar -Dsonar.login=%SONAR_TOKEN%'
                 }
             }
         }

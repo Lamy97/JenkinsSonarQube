@@ -1,45 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Identité du projet parent -->
     <groupId>com.novelis</groupId>
     <artifactId>spring-boot-microservices-tp</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.0.0</version>
-        <relativePath/>
-    </parent>
-
-
+    <!-- Propriétés globales -->
     <properties>
+        <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Configuration SonarQube -->
+        <sonar.projectKey>com.novelis:spring-boot-microservices-tp</sonar.projectKey>
+        <sonar.projectName>spring-boot-microservices-tp</sonar.projectName>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.login>sqa_ab14f7e75575f9eb75b2cff08ad8940cff408292</sonar.login>
     </properties>
+
+    <!-- Gestion des plugins -->
     <build>
         <pluginManagement>
             <plugins>
+                <!-- Tests unitaires -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
                 </plugin>
 
+                <!-- Tests d’intégration -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>3.2.5</version>
                 </plugin>
+
+                <!-- Plugin SonarQube -->
+                <plugin>
+                    <groupId>org.sonarsource.scanner.maven</groupId>
+                    <artifactId>sonar-maven-plugin</artifactId>
+                    <version>3.9.1.2184</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
 
+    <!-- Dépendances partagées -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -50,6 +64,7 @@
         </dependencies>
     </dependencyManagement>
 
+    <!-- Modules -->
     <modules>
         <module>personne-ms</module>
         <module>tp-ms</module>
