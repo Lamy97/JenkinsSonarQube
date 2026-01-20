@@ -22,7 +22,6 @@
         <sonar.projectKey>com.novelis:spring-boot-microservices-tp</sonar.projectKey>
         <sonar.projectName>spring-boot-microservices-tp</sonar.projectName>
         <sonar.host.url>http://localhost:9000</sonar.host.url>
-        <sonar.login>sqa_ab14f7e75575f9eb75b2cff08ad8940cff408292</sonar.login>
     </properties>
 
     <!-- Gestion des plugins -->
