@@ -14,24 +14,29 @@ pipeline {
         )
     }
 
+    environment {
+        SONAR_TOKEN = credentials('sonar-token')
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
                 git branch: "${params.BRANCH_NAME}",
-                    url: 'https://github.com/Lamy97/JenkinsSonarQube.git'
+                    url: 'https://github.com/Lamy97/JenkinsSonarQube.git',
+                    credentialsId: 'github-credentials-id'
             }
         }
 
         stage('Build') {
             steps {
-                bat 'mvn clean compile'
+                bat 'mvn -B clean compile'
             }
         }
 
         stage('Tests') {
             steps {
-                bat 'mvn test'
+                bat 'mvn -B test'
             }
             post {
                 always {
@@ -44,7 +49,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    bat 'mvn sonar:sonar'
+                    bat "mvn -B sonar:sonar -Dsonar.login=%SONAR_TOKEN%"
                 }
             }
         }
@@ -55,6 +60,15 @@ pipeline {
                     waitForQualityGate abortPipeline: true
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline terminé.'
+        }
+        failure {
+            echo 'Pipeline échoué.'
         }
     }
 }
